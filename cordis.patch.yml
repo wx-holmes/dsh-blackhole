@@ -1,0 +1,22 @@
+- insert:
+    - id: blackhole
+      name: dsh-blackhole
+      config:
+        # 事件视界：上下文占比到 60% 触发归档 + 压缩
+        eventHorizon: 0.6
+        solidifyLine: 0.75
+        hardCap: 0.9
+        # 父类判定线：先按 60% 触发（与 eventHorizon 对齐），M2 接入 eventHorizon 后由它接管。
+        # 保留 16% 的近期内容不压（父类默认值）。
+        thresholdRatio: 0.6
+        retainRatio: 0.16
+        # 原文真源（书同文 self 档）
+        archiveRoot: "A:\\tongwen\\self\\context"
+        # 插件状态/缓存（可重建）
+        stateRoot: "A:\\dsh-home\\blackhole"
+        # 启动恢复：pending 超时转 abandoned
+        pendingTtlMs: 600000
+        # 窄段门槛（2026-11-05 加）：父类只压「前缀」，前缀太窄时摘要压不小，
+        # 白烧一次摘要调用还留一份废弃件。事件数或 token 数低于门槛就先跳过，等它自然变宽。
+        minCompactEvents: 2
+        minCompactTokens: 2000

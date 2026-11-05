@@ -1,0 +1,16 @@
+{
+  "name": "dsh-blackhole",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "index.js",
+  "description": "黑洞插件：压缩即归档。到事件视界压缩，原文逐字进 self，索引卡做检索入口。",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "scripts": {
+    "test": "node test/archive.test.mjs && node test/logic.test.mjs && node test/gate.test.mjs && node test/events.test.mjs && node test/pipeline.test.mjs"
+  }
+}

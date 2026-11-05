@@ -1,0 +1,48 @@
+{
+  "id": "dsh-blackhole",
+  "name": "黑洞（压缩即归档）",
+  "version": "0.1.0",
+  "kind": "inner",
+  "status": "online",
+  "owner": "黑洞时空",
+  "updatedAt": "2026-11-05T19:26:00+08:00",
+  "_说明": "上下文压缩后端。本名片只给只读能力——压缩/归档写盘由黑洞自己做，书同文不代写。trace.log 太大（13MB+，超过 organ_call 的 64KB 单文件上限）故不登记；要看压缩是否在跑，用 health（trace.log 的 mtime）判断。events 由黑洞引擎在压缩生命周期里追加：compact.archived（归档成功，info）/ compact.skipped（段太窄跳过，info）/ archive.failed（压缩失败、原文已保留，warn）；字段按联动契约 §2.2，书同文按 offset 增量读进账本。",
+  "events": {
+    "path": "A:\\dsh-home\\blackhole\\events.jsonl"
+  },
+  "health": {
+    "type": "file",
+    "path": "A:\\dsh-plugins\\dsh-blackhole\\trace.log",
+    "ttlMs": 600000
+  },
+  "abilities": [
+    {
+      "name": "blackhole.index.read",
+      "desc": "压缩归档的检索入口（人读版：哪个会话、哪天、压了哪几段、原文字典在哪）",
+      "entry": { "type": "file", "path": "A:\\tongwen\\self\\context\\索引.md" },
+      "sideEffect": "read",
+      "timeoutMs": 500
+    },
+    {
+      "name": "blackhole.index.jsonl.read",
+      "desc": "同一份索引的机器版（JSONL，一行一条，约 26KB，按会话/日期/段查原文路径）",
+      "entry": { "type": "file", "path": "A:\\tongwen\\self\\context\\index.jsonl" },
+      "sideEffect": "read",
+      "timeoutMs": 800
+    },
+    {
+      "name": "blackhole.archive.readme",
+      "desc": "归档区规则说明（原文怎么存、怎么恢复、什么时候会缺）",
+      "entry": { "type": "file", "path": "A:\\tongwen\\self\\context\\README.md" },
+      "sideEffect": "read",
+      "timeoutMs": 500
+    },
+    {
+      "name": "blackhole.config.read",
+      "desc": "当前阈值配置（事件视界 60% / 固化线 75% / 硬上限 90% / 窄段门槛 2 事件或 2000 token）",
+      "entry": { "type": "file", "path": "A:\\dsh-plugins\\dsh-blackhole\\cordis.patch.yml" },
+      "sideEffect": "read",
+      "timeoutMs": 500
+    }
+  ]
+}
