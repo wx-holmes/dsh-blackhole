@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { ArchiveStore } from '../src/archive.js';
 
-const ROOT = 'A:\\tongwen\\scratch\\blackhole-test';
+const ROOT = '~/archive\\scratch\\blackhole-test';
 const ARCHIVE = path.join(ROOT, 'archive');
 const STATE = path.join(ROOT, 'state');
 
@@ -30,7 +30,7 @@ function makeEvents() {
           role: 'assistant',
           content: [
             { type: 'text', text: '收到，这条要逐字保留。' },
-            { type: 'tool-call', name: 'read', arguments: { path: 'A:\\x.md' } },
+            { type: 'tool-call', name: 'read', arguments: { path: 'D:\\example\\x.md' } },
           ],
         },
       },

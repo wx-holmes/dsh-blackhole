@@ -1,0 +1,16 @@
+{
+  "key": "9be97fceaa60974eae881b8185e7f4a3b9ebdac1b00a7ca24f77016eab899eef",
+  "sid": "session-test-1",
+  "date": "2026-11-05",
+  "start": 30,
+  "end": 32,
+  "contentHash": "4f4c28cd5856fe33583c1de9244e3116e1b25dd8858f738eca646f698db9bd0b",
+  "rangeHash": "995f468911ecf845b84537b906d7e3cb354b7cbe994e8066436b3d57c411eae8",
+  "stagingPath": "~\\archive\\scratch\\blackhole-test\\archive\\session-test-1\\2026-11-05\\30-32.md.9be97fce.staging",
+  "finalPath": "~\\archive\\scratch\\blackhole-test\\archive\\session-test-1\\2026-11-05\\30-32.md",
+  "state": "abandoned",
+  "createdAt": "2026-11-05T00:00:00.000Z",
+  "abandonedAt": "2026-11-05T07:20:00.000Z",
+  "reason": "timeout",
+  "abandonedPath": "~\\archive\\scratch\\blackhole-test\\archive\\session-test-1\\2026-11-05\\30-32.md.abandoned"
+}

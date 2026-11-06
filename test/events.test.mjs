@@ -16,6 +16,9 @@ import path from 'node:path';
 import { makeBlackholeEngine } from '../src/engine.js';
 import { appendEvent, eventsPath, localIso, readEvents, EVENT_SOURCE, EVENT_TYPE } from '../src/events.js';
 
+// 单测别往生产 trace.log 里写：trace 路径走环境变量。
+process.env.BLACKHOLE_TRACE = path.join(os.tmpdir(), `bh-trace-${path.basename(process.argv[1] ?? 'test')}-${process.pid}.log`);
+
 let passed = 0;
 function ok(name) {
   passed += 1;
@@ -95,8 +98,10 @@ console.log('器官事件 · 单测');
       assert.ok(field in event, `缺字段 ${field}`);
     }
     assert.equal(event.source, EVENT_SOURCE);
+    assert.ok('owner' in event.payload, 'payload 里必须有 owner（合体接入清单 §五②）');
     assert.match(event.ts, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/);
   }
+  assert.equal(skipped.payload.owner, null, '没配 owner 时写 null，不留空串');
   assert.equal(skipped.severity, 'info');
   assert.equal(skipped.payload.events, 1);
   assert.equal(skipped.payload.session, 's-ev');
@@ -156,6 +161,19 @@ console.log('器官事件 · 单测');
   assert.match(ts, /[+-]\d{2}:\d{2}$/);
   assert.ok(!ts.endsWith('Z'));
   ok('localIso 输出带时区偏移');
+}
+
+// 8) 配了 owner 就写进 payload.owner（profile 归属），三个发射点都要带上
+{
+  const OwnerEngine = makeBlackholeEngine(OkBase, { ...paths, owner: 'blackhole-plugin' });
+  const before = readEvents(paths.stateRoot).length;
+  const engine = new OwnerEngine(makeCtx([{ seq: 30, tokens: 5000 }]), {});
+  await engine.compactRegion(30, 30, { session: makeSession('s-owner', [30]) });
+  const fresh = readEvents(paths.stateRoot).slice(before);
+  assert.equal(fresh.length, 1);
+  assert.equal(fresh[0].payload.owner, 'blackhole-plugin');
+  assert.equal(fresh[0].payload.session, 's-owner');
+  ok('config.owner 写进 payload.owner（会话 id 仍在 payload.session）');
 }
 
 fs.rmSync(root, { recursive: true, force: true });

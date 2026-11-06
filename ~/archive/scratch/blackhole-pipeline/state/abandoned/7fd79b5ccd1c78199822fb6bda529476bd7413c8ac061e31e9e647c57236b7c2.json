@@ -1,0 +1,17 @@
+{
+  "key": "7fd79b5ccd1c78199822fb6bda529476bd7413c8ac061e31e9e647c57236b7c2",
+  "sid": "session-pipeline-1",
+  "date": "2026-11-07",
+  "start": 13,
+  "end": 14,
+  "contentHash": "1e7bbb9f0a45ced26296d329d81897b999fa8c4042cffbe1ce7acd2b15bc8a61",
+  "rangeHash": "77d4c73da710f294ae4c9bd7c41e4b6584148537449d6ffb758fef75380735eb",
+  "stagingPath": "~\\archive\\scratch\\blackhole-pipeline\\archive\\session-pipeline-1\\2026-11-07\\13-14.md.7fd79b5c.staging",
+  "finalPath": "~\\archive\\scratch\\blackhole-pipeline\\archive\\session-pipeline-1\\2026-11-07\\13-14.md",
+  "state": "abandoned",
+  "createdAt": "2026-11-06T18:50:54.481Z",
+  "pendingAt": "2026-11-06T18:50:54.482Z",
+  "abandonedAt": "2026-11-06T18:50:54.484Z",
+  "reason": "summary too long",
+  "abandonedPath": "~\\archive\\scratch\\blackhole-pipeline\\archive\\session-pipeline-1\\2026-11-07\\13-14.md.abandoned"
+}

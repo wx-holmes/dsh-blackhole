@@ -1,0 +1,21 @@
+---
+sid: session-pipeline-1
+date: 2026-11-07
+range: 13-14
+events: 2
+state: staging
+createdAt: 2026-11-06T18:50:54.481Z
+contentHash: 1e7bbb9f0a45ced26296d329d81897b999fa8c4042cffbe1ce7acd2b15bc8a61
+rangeHash: 77d4c73da710f294ae4c9bd7c41e4b6584148537449d6ffb758fef75380735eb
+idempotencyKey: 7fd79b5ccd1c78199822fb6bda529476bd7413c8ac061e31e9e647c57236b7c2
+---
+
+# 黑洞归档 · 区间 13-14（2 条）
+## [13] assistant/message
+
+好，先读事件。
+[tool-call read_file] {}
+
+## [14] tool/result
+
+原始输出

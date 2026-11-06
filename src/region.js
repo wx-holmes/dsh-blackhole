@@ -3,14 +3,23 @@ import { buildCard } from './cards.js';
 /**
  * 取某个区间的事件（数据源 = session 事件，不是 input.messages）。
  * surface.nodes 是当前 surface 的 seq 列表；eventAt 取原始事件。
+ *
+ * 注意：surface 是按「位置」排的，seq 不一定单调递增——压缩产生的摘要节点带着
+ * 最新的 seq，却插在保留区的前面。所以区间必须按 indexOf 的位置切；只有两端的
+ * seq 都不在 surface 上时才退回数字比较（正常不会走到那一步）。
  */
 export function collectRegionEvents(session, start, end) {
   const nodes = session?.surface?.nodes ?? [];
   const from = Number(start);
   const to = Number(end);
-  return nodes
-    .filter((seq) => Number(seq) >= from && Number(seq) <= to)
-    .map((seq) => session.eventAt(seq))
+  const startIdx = nodes.indexOf(from);
+  const endIdx = nodes.indexOf(to);
+  const slice =
+    startIdx !== -1 && endIdx !== -1 && startIdx <= endIdx
+      ? nodes.slice(startIdx, endIdx + 1)
+      : nodes.filter((seq) => Number(seq) >= from && Number(seq) <= to);
+  return slice
+    .map((seq) => (typeof session?.eventAt === 'function' ? session.eventAt(seq) : undefined))
     .filter((event) => event !== undefined && event !== null);
 }
 

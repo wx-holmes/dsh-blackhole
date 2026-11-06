@@ -15,6 +15,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { makeBlackholeEngine } from '../src/engine.js';
 
+// 单测别往生产 trace.log 里写：trace 路径走环境变量。
+process.env.BLACKHOLE_TRACE = path.join(os.tmpdir(), `bh-trace-${path.basename(process.argv[1] ?? 'test')}-${process.pid}.log`);
+
 let passed = 0;
 function ok(name) {
   passed += 1;
@@ -150,6 +153,26 @@ console.log('窄段门槛 · 单测');
     /summary is not smaller than the shadowed content/
   );
   ok('真实摘要失败照常抛出');
+}
+
+// 8) 非单调 surface：seq 倒挂但位置有序 → 按位置算，不许误判成窄段
+//    真实场景：压缩后摘要节点带最新 seq 却插在保留区最前面（5443 在 5401 前面），
+//    父类按位置取区间，数字是倒挂的。之前按数字筛会得到 events=0 → 永远跳过 → 压不动。
+{
+  const nodes = [
+    { seq: 5443, tokens: 4000 }, // 摘要节点（最新 seq，插在最前）
+    { seq: 5401, tokens: 3000 },
+    { seq: 5405, tokens: 3000 },
+    { seq: 5408, tokens: 1000 }, // 保留区边界前最后一个
+    { seq: 5410, tokens: 9000 }, // 保留区（不该被算进区间）
+  ];
+  const engine = new Engine(makeCtx(nodes), {});
+  const span = engine.spanStats(session, 5443, 5408);
+  assert.equal(span.events, 4, '按位置应含 5443/5401/5405/5408 四个节点');
+  assert.equal(span.tokens, 11000);
+  const out = await engine.compactRegion(5443, 5408, agent);
+  assert.equal(out?.ok, true, '够宽就该放行给父类');
+  ok('非单调 surface：seq 倒挂但位置有序，按位置算不误判窄段');
 }
 
 fs.rmSync(root, { recursive: true, force: true });

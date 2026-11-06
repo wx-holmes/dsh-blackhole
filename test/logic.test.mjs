@@ -12,7 +12,7 @@ const EVENTS = [
   {
     seq: 12,
     type: 'user/message',
-    data: { message: { role: 'user', content: [{ type: 'text', text: '把归档写进 self，路径用 A:\\tongwen\\self\\context。' }] } },
+    data: { message: { role: 'user', content: [{ type: 'text', text: '把归档写进 self，路径用 D:\\example\\archive。' }] } },
   },
   {
     seq: 13,
@@ -22,7 +22,7 @@ const EVENTS = [
         role: 'assistant',
         content: [
           { type: 'text', text: '好，先读 session 事件再落盘。' },
-          { type: 'tool-call', name: 'read_file', arguments: { path: 'A:\\x.md' } },
+          { type: 'tool-call', name: 'read_file', arguments: { path: 'D:\\example\\x.md' } },
         ],
       },
     },
@@ -70,7 +70,7 @@ const card = buildCard({
   sid: 'session-test-1',
   date: '2026-11-05',
   events: EVENTS,
-  archivePath: 'A:\\tongwen\\self\\context\\session-test-1\\2026-11-05\\12-14.md',
+  archivePath: '~/.dsh/blackhole/archive\\session-test-1\\2026-11-05\\12-14.md',
   now: () => new Date('2026-11-05T07:25:00Z'),
 });
 assert.match(card.cardId, /^bh_20261105_[0-9a-f]{8}$/);
@@ -93,7 +93,7 @@ ok('规则摘要：起点/收尾/工具');
 
 const tags = deriveTags(EVENTS);
 assert.ok(tags.includes('read_file'));
-assert.ok(tags.some((t) => t.includes('A:\\')), '应抽出文件路径');
+assert.ok(tags.some((t) => t.includes('D:\\')), '应抽出文件路径');
 ok('标签：工具名 + 文件路径');
 
 // 空文本事件不炸

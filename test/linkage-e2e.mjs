@@ -15,7 +15,7 @@ import { appendEvent, EVENT_TYPE, eventsPath } from '../src/events.js';
 
 import { pathToFileURL } from 'node:url';
 
-const TONGWEN = pathToFileURL('A:/dsh-plugins/dsh-tongwen/lib/organs.js').href;
+const TONGWEN = pathToFileURL('<plugins>/dsh-tongwen/lib/organs.js').href;
 
 let passed = 0;
 function ok(name) {

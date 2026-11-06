@@ -2,21 +2,49 @@
     - id: blackhole
       name: dsh-blackhole
       config:
-        # 事件视界：上下文占比到 60% 触发归档 + 压缩
+        # 事件视界：上下文占比到这里就归档 + 压缩（默认 0.6，按需下调）
         eventHorizon: 0.6
         solidifyLine: 0.75
         hardCap: 0.9
-        # 父类判定线：先按 60% 触发（与 eventHorizon 对齐），M2 接入 eventHorizon 后由它接管。
-        # 保留 16% 的近期内容不压（父类默认值）。
+        # 父类判定线 / 保留区（必须 threshold > retain）
         thresholdRatio: 0.6
-        retainRatio: 0.16
-        # 原文真源（书同文 self 档）
-        archiveRoot: "A:\\tongwen\\self\\context"
-        # 插件状态/缓存（可重建）
-        stateRoot: "A:\\dsh-home\\blackhole"
-        # 启动恢复：pending 超时转 abandoned
+        retainRatio: 0.2
+        # 原文归档根目录（默认 ~/.dsh/blackhole/archive）
+        # archiveRoot: "~/.dsh/blackhole/archive"
+        # 插件状态（可重建，默认 ~/.dsh/blackhole/state）
+        # stateRoot: "~/.dsh/blackhole/state"
+        # pending 超时转 abandoned
         pendingTtlMs: 600000
-        # 窄段门槛（2026-11-05 加）：父类只压「前缀」，前缀太窄时摘要压不小，
-        # 白烧一次摘要调用还留一份废弃件。事件数或 token 数低于门槛就先跳过，等它自然变宽。
+        # 窄段门槛：事件数或 token 太少就不压（摘要压不小，白烧一次调用）
         minCompactEvents: 2
-        minCompactTokens: 2000
+        minCompactTokens: 20000
+        # 单次折叠上限：一段超过 35 万 token 时，一次摘要读不完（模型会拒绝），
+        # 只折最老的一段，剩下的下一轮继续
+        maxFoldTokens: 350000
+        # 一次请求里最多连折几段（救援用；正常会话只折一段）
+        compactionRetries: 2
+        # 先剪后折：折叠前把段内超过 8KB 的工具输出剪成 头4K + 标记 + 尾1K，
+        # 归档发生在剪之前，原文不受影响
+        fade: true
+        fadeMinSpanTokens: 60000
+        fadeMinChars: 8192
+        fadeHeadChars: 4096
+        fadeTailChars: 1024
+        # 视界采样（每时空每 60 秒一行，零模型调用）
+        sampleEveryMs: 60000
+        # events.jsonl 的归属字段（可留空）
+        owner: ""
+        events: true
+        # 原文块仓（bh_compress / bh_restore / bh_search 用）
+        # blocksRoot: "~/.dsh/blackhole/blocks"
+        toolPrefix: "bh"
+- id: llm-deepseek
+  config:
+    retryPolicy:
+      mode: normal
+      retryableCodes: [EMPTY_RESPONSE, RATE_LIMIT, SERVER, TIMEOUT, TRANSPORT, MALFORMED_RESPONSE]
+- id: llm-deepseek-account
+  config:
+    retryPolicy:
+      mode: normal
+      retryableCodes: [EMPTY_RESPONSE, RATE_LIMIT, SERVER, TIMEOUT, TRANSPORT, MALFORMED_RESPONSE]

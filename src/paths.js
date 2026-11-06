@@ -1,13 +1,14 @@
+import os from 'node:os';
 import path from 'node:path';
 
 /** 原文真源：书同文 self 档。 */
 export function defaultArchiveRoot() {
-  return process.env.BLACKHOLE_ARCHIVE_ROOT || 'A:\\tongwen\\self\\context';
+  return process.env.BLACKHOLE_ARCHIVE_ROOT || path.join(os.homedir(), '.dsh', 'blackhole', 'archive');
 }
 
 /** 插件自己的状态/缓存区（可重建）。 */
 export function defaultStateRoot() {
-  return process.env.BLACKHOLE_STATE_ROOT || 'A:\\dsh-home\\blackhole';
+  return process.env.BLACKHOLE_STATE_ROOT || path.join(os.homedir(), '.dsh', 'blackhole', 'state');
 }
 
 /** 原文文件路径：<root>/<sid>/<date>/<seq起>-<seq止>.md */
