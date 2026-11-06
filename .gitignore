@@ -3,3 +3,4 @@ trace.log
 trace.log.old
 *.log
 .DS_Store
+~\n.git-local/\n

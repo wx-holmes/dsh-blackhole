@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { ArchiveStore } from '../src/archive.js';
 
-const ROOT = '~/archive\\scratch\\blackhole-test';
+const ROOT = path.join(os.tmpdir(), 'blackhole-test');
 const ARCHIVE = path.join(ROOT, 'archive');
 const STATE = path.join(ROOT, 'state');
 
