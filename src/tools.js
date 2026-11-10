@@ -17,7 +17,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { BlockStore, BlockStoreError, DEFAULT_READ_LIMIT } from './blocks.js';
-import { EVENT_TYPE, eventsPath, readEvents } from './events.js';
+import { ColdStore, ColdStoreError } from './coldstore.js';
+import { EVENT_TYPE, appendEvent, eventsPath, readEvents } from './events.js';
 
 const render = (_args, value) => [
   { type: 'text', text: typeof value === 'string' ? value : JSON.stringify(value, null, 2) },
@@ -27,10 +28,13 @@ const render = (_args, value) => [
 const output = { schema: { type: 'object' }, render };
 
 function failure(error) {
-  const code = error instanceof BlockStoreError ? error.code : 'E_INTERNAL';
+  const code = error instanceof BlockStoreError || error instanceof ColdStoreError ? error.code : 'E_INTERNAL';
   const message = String(error?.message ?? error);
   return { ok: false, code, message };
 }
+
+/** 冷库默认位置：与吸收脚本的落点一致；可用 coldStoreRoot 覆盖。 */
+export const DEFAULT_COLD_STORE = '';  // 空 = 用配置里的 coldStoreRoot（见 cordis.patch.yml）
 
 /**
  * 压缩台账（补 bili 的 acp_status 那个位置）：events 里的归档/跳过/失败计数、
@@ -175,6 +179,63 @@ export function makeBlockTools(config = {}) {
       },
     },
     {
+      name: name('restore_span'),
+      description:
+        '从冷库（billion-context 原文库吸收进来的归档）按「会话 + seq 区间」取回原文。每片解压后校验 sha256，对不上报 E_CORRUPT。不传 session 时列出冷库里有哪些会话。',
+      parameters: {
+        type: 'object',
+        properties: {
+          session: { type: 'string', description: '会话 id 或唯一前缀；省略则列会话清单' },
+          from: { type: 'number', description: '起始 seq（含）' },
+          to: { type: 'number', description: '结束 seq（含，默认等于 from）' },
+          maxChars: { type: 'number', description: '最多返回多少字符（默认不限；给值时可能截断，truncated=true）' },
+          query: { type: 'string', description: '可选：这次召回是为了回答什么（写进 recall.hit 事件，便于评测归因）' },
+          caller: { type: 'string', description: '可选：调用方名字（如「书同文」「意识」）；插件拿不到调用方身份，只能谁调谁填' },
+        },
+        required: [],
+      },
+      output,
+      timeoutMs: 30000,
+      async execute(args = {}) {
+        try {
+          const store = new ColdStore({ root: config.coldStoreRoot || DEFAULT_COLD_STORE });
+          if (!args.session) {
+            const sessions = store.sessions();
+            return { ok: true, root: store.root, count: sessions.length, sessions };
+          }
+          const startedAt = Date.now();
+          const span = store.readSpan(args);
+          const latencyMs = Date.now() - startedAt;
+          // recall.hit（2026-11-08 加，书同文评测口径）：一次取回 = 一次「被用到」。
+          // 失败不影响返回；事件丢了也不能让召回失败。
+          if (config.stateRoot) {
+            try {
+              appendEvent(config.stateRoot, {
+                type: EVENT_TYPE.RECALL_HIT,
+                subject: `召回 ${span.session} ${span.from}-${span.to}`,
+                payload: {
+                  session: span.session,
+                  seqFrom: span.from,
+                  seqTo: span.to,
+                  query: args.query ?? '',
+                  caller: args.caller ?? '',
+                  bytes: span.bytes,
+                  digest: span.digest,
+                  latencyMs,
+                  truncated: span.truncated,
+                },
+              });
+            } catch {
+              // 事件写不进就算了，召回结果照样返回。
+            }
+          }
+          return { ok: true, latencyMs, ...span };
+        } catch (error) {
+          return failure(error);
+        }
+      },
+    },
+    {
       name: name('status'),
       description:
         '黑洞现状：块仓（块数/占用/丢没丢原文/坏索引）+ 压缩台账（归档/跳过/失败次数、最近归档时间、self 档归档件份数与占用）。只读。',
@@ -233,3 +294,4 @@ export function registerBlockTools(scope, config = {}, logger = null) {
   }
   return registered;
 }
+

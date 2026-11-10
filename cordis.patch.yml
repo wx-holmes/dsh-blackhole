@@ -2,42 +2,94 @@
     - id: blackhole
       name: dsh-blackhole
       config:
-        # 事件视界：上下文占比到这里就归档 + 压缩（默认 0.6，按需下调）
-        eventHorizon: 0.6
+        # 事件视界：上下文占比到 15% 就归档 + 压缩（按账本取舍，见文件末尾「账本取舍」注释）
+        eventHorizon: 0.28
         solidifyLine: 0.75
         hardCap: 0.9
-        # 父类判定线 / 保留区（必须 threshold > retain）
-        thresholdRatio: 0.6
-        retainRatio: 0.2
-        # 原文归档根目录（默认 ~/.dsh/blackhole/archive）
-        # archiveRoot: "~/.dsh/blackhole/archive"
-        # 插件状态（可重建，默认 ~/.dsh/blackhole/state）
-        # stateRoot: "~/.dsh/blackhole/state"
-        # pending 超时转 abandoned
+        # 父类判定线：15% 触发（约 15.7 万 token）。账本显示每次调用上下文 36 万一档、100% 超 20 万，
+        # 所以把线压到 15 万上下；保留 7%（约 7.3 万）近期内容不压，折后表面约 7~16 万。
+        thresholdRatio: 0.28
+        retainRatio: 0.15
+        # 冷库（2026-11-07）：billion-context 原文库吸收后的读端；bh_restore_span 默认读这里
+        coldStoreRoot: "~/.dsh/blackhole/coldstore"
+        # 视界实验日轮换（2026-11-07）：start 当天算第 0 天，按天号取 ratios；
+        # 起效时同时覆盖上面的 eventHorizon 与 thresholdRatio（两处同改，避免一旧一新打架）。
+        # 11-08 起 70 → 30 → 50 → 60，一圈四天，之后循环；start 之前不生效。
+        dailyHorizon:
+          start: "2026-11-08"
+          ratios: [0.7, 0.3, 0.5, 0.6]
+        # 按会话覆盖事件视界（2026-11-08，主人点头的选项 1）：
+        # QQ 中枢一回复要 2~3 次模型往返、每次都重带整段上下文，对上下文大小最敏感。
+        # 只降它一个：0.7 → 0.5（约 68 万 → 52 万），其他时空仍按日轮换走全局档位。
+        # 键是 session id 前缀；实验记录里这一条要单独标注，不是 0.7 档的样本。
+        sessionRatios:
+          "session-cacb1b48": 0.5
+        # 折叠冷却（2026-11-09，主人点头）：同一会话 10 分钟内最多真折 2 次，超了就这一轮不折。
+        # 治 0.3 档下的追尾：11-09 实测 1b80e3aa 15 分钟折 5 次，表面一直卡 353~385k，
+        # 折一段 30k、几分钟又长回来，纯烧摘要。取消把两个值设 0。
+        foldCooldownMs: 600000
+        foldCooldownMax: 2
+        # 冷却的两条放行（2026-11-09 23:40）：计数现在落盘跨重启，光拦不放会把会话憋到硬顶。
+        # 连续被拦 8 次、或 tokens 到硬顶的 95%，就放行这一轮——宁可多折一次。
+        foldBypassStreak: 8
+        foldBypassHardCap: 0.95
+        # 原文真源（书同文 self 档）
+        archiveRoot: "~/.dsh/blackhole/archive"
+        # 插件状态/缓存（可重建）
+        stateRoot: "~/.dsh/blackhole"
+        # 启动恢复：pending 超时转 abandoned
         pendingTtlMs: 600000
-        # 窄段门槛：事件数或 token 太少就不压（摘要压不小，白烧一次调用）
+        # 窄段门槛（2026-11-05 加）：父类只压「前缀」，前缀太窄时摘要压不小，
+        # 白烧一次摘要调用还留一份废弃件。事件数或 token 数低于门槛就先跳过，等它自然变宽。
         minCompactEvents: 2
         minCompactTokens: 20000
-        # 单次折叠上限：一段超过 35 万 token 时，一次摘要读不完（模型会拒绝），
-        # 只折最老的一段，剩下的下一轮继续
+        # 单次折叠上限：超过 35 万 token 的段一次摘要读不完（模型会拒绝），只折最老的一段
         maxFoldTokens: 350000
-        # 一次请求里最多连折几段（救援用；正常会话只折一段）
-        compactionRetries: 2
-        # 先剪后折：折叠前把段内超过 8KB 的工具输出剪成 头4K + 标记 + 尾1K，
-        # 归档发生在剪之前，原文不受影响
+        # 救援档：一次请求里允许多折几段（每段仍受 35 万上限约束），
+        # 让 100 万级的超长会话能在一次重试里压下去；正常会话不会走到这里。
+        compactionRetries: 4
+        # 先剪后折：折叠前把这段里超过 8KB 的工具输出剪成 头4K+标记+尾1K
         fade: true
         fadeMinSpanTokens: 60000
         fadeMinChars: 8192
         fadeHeadChars: 4096
         fadeTailChars: 1024
-        # 视界采样（每时空每 60 秒一行，零模型调用）
+        # 视界实验采样：每时空每 60 秒记一行表面大小（折叠时必记），落 ~/.dsh/blackhole/surface.jsonl
         sampleEveryMs: 60000
-        # events.jsonl 的归属字段（可留空）
+        # 合体（2026-11-06 加）：events.jsonl 的归属字段 payload.owner。
+        # 黑洞是一个 profile 一实例、服务所有会话，所以这里填的是「整份 profile 归谁」，
+        # 不填就是 null；某个会话属于哪个项目，书同文用白板里的 session id 反查（payload.session 一直都在）。
         owner: ""
+        # events 开关：写成 false 就完全不写 events.jsonl（排查用）
         events: true
-        # 原文块仓（bh_compress / bh_restore / bh_search 用）
-        # blocksRoot: "~/.dsh/blackhole/blocks"
+        # 黑洞自己的原文块仓（A 段 2026-11-06）：compress/restore/search 的原文落这里，
+        # 与「压缩归档」那份 self/context 原件分开——这里存的是任意一段文本的原文块。
+        # 默认 <stateRoot>/blocks；单独列出来，将来原文跟着 self 档走时只改这一行。
+        blocksRoot: "~/.dsh/blackhole/blocks"
+        # 工具名前缀：现在是 bh_compress / bh_restore / bh_search / bh_status。
+        # C 段把 billion-context 包整个删掉之后，这里的名字可以直接顶成 compress / decompress /
+        # search_context（改 toolPrefix 与 src/tools.js 里的 base 名即可，不动实现）。
         toolPrefix: "bh"
+    # === 与 billion-context 解耦（B 段，2026-11-06 23:1x）===
+    # 这里原来挂着两条：
+    #   - id: bili-native            name: billion-context
+    #   - id: bili-compaction-gate   name: billion-context/dsh-compaction-gate
+    # 下面还跟着 `- id: compaction-basic / config: {auto: false}` 和四个 preset 的
+    # `inject: [biliBasicCompactionPolicy]`。
+    #
+    # 为什么现在摘掉：bili-native 在 apply 时会在 globalThis 上声明
+    # __BILI_DSH_COMPACTION_VERDICT__ = "active"（billion-context\dist\agent\dsh-native.js），
+    # gate 再借 ctx.on("internal/config") 把 DSH 自带的 compaction-basic / command-compact
+    # 改成 disabled:true（billion-context\dist\agent\dsh-compaction-gate.js）。也就是说：
+    # 只要 bili 在，DSH 原生压缩 lane 就归它，黑洞的 engine 只能等它放行。
+    #
+    # 现在黑洞自己的块仓 + bh_* 四个工具已经能独立读写原文，所以把压缩 lane 交回 DSH 原生通道
+    # （黑洞的 engine 就挂在这条行上），bili 的四个工具由 bh_* 顶替。
+    # 备份：旧版 cordis.patch.yml 的备份
+    # 回滚：把上面两条 insert、compaction-basic 的 auto:false、四个 preset 的 inject 加回来即可。
+# DSH 默认重试白名单缺 MALFORMED_RESPONSE；patch 是整段替换 config，
+# 所以每一行都把默认码全列一遍，漏一个就会悄悄少掉那个码的重试。
+# （这两条原本来自 bili 的 bundle patch，摘掉 bili 后仍然有用，保留。）
 - id: llm-deepseek
   config:
     retryPolicy:
@@ -48,3 +100,29 @@
     retryPolicy:
       mode: normal
       retryableCodes: [EMPTY_RESPONSE, RATE_LIMIT, SERVER, TIMEOUT, TRANSPORT, MALFORMED_RESPONSE]
+
+# === 「吸收 bili」到底吸了什么（2026-11-06 23:2x）===
+# bili（billion-context）真正省 token 的地方，不是在压缩那一瞬间，而是它在模型请求上
+# 做了一层改写：每一轮都把旧消息折成块摘要再发出去，所以「每次请求看到的表面」一直很小。
+# DSH 的压缩是阈值触发：到线才压一次、压完等它再长到线。原来线在 60%，于是平均表面
+# 比 bili 在的时候大得多——这就是「卸了包以后token变贵」的真正原因，不是能力丢了，是线不同。
+#
+# 黑洞不打算在进程外再挂一个代理（那等于把 bili 换个皮），而是用等效机制：
+#   ① 判定线从 60% 降到 35%：每次请求表面更小，压缩更勤但每次压的段更短；
+#   ② retainRatio 保持 16%（必须小于判定线），近期内容不压，随时能回看；
+#   ③ 每轮 before-request 还是会先跑 toolResultPruner（DSH 自带的工具结果剪枝），这部分免费；
+#   ④ 压缩台账写进 bh_status（归档/跳过/失败、最近归档时间、归档件份数与占用），
+#      顶上 bili 的 acp_status 那个位置。
+# 代价：压缩更频繁 = 摘要调用更多、但每次更短；总摘要输入量与「一次大压」同量级。
+# 如果实测太碎/太贵，把 thresholdRatio 调回 0.45~0.5 即可，不用改代码。
+
+# === 账本取舍（2026-11-07 01:22，含固定开销实测）===
+# 实测（trace 17:20）：折前 373,344 → 折后 184,578，意味着「系统提示 + 工具表 + 保留区 + 摘要」
+# 大约 18.4 万，其中固定开销（系统提示与工具 schema，不可折）约 10 万，retain 0.07 的保留区约 6.9 万。
+# 这就是 01:15 那版 0.15/0.07 的坑：折完 18.4 万仍在 15.7 万线下 → 父类每次都再试一次，
+# 每次都是窄段跳过——表面没降下来，反而把最近原文压到 6.9 万，等于把「新时空」做成了日常。
+# 所以判定线必须高于「固定开销 + 保留区 + 摘要」，否则折完还在线上、必然抖动。
+# 这版取 0.28 / 0.15：表面在 25~29 万间循环，保留最近约 15 万原文（40+ 轮），单次比 36 万省约 20%；
+# 不再追「省一半」——那要 retain 压到 8 万，每 20 轮就断一次记忆，账本省下的钱会从「返工」里赔回去。
+# 真要再省，省固定开销那 10 万（合并工具描述 / 精简系统提示），那部分可折且不丢记忆。
+# 验收：第二天日报「单次 >20 万占比」应降到 50% 左右、缓存命中率别跌破 90%；若掉，说明折在打碎缓存。

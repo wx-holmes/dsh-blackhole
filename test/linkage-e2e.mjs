@@ -3,7 +3,7 @@
  *
  * 为什么要有这层：两个插件之间没有任何函数调用，只认「名片 + events.jsonl」。
  * 所以唯一能证明「真的合上了」的办法，是让黑洞真写一次事件、再让书同文真读一次，
- * 看它有没有进账本。全程用临时目录，绝不碰真实的 A:\tongwen\logs\账本 和 A:\dsh-home\blackhole。
+ * 看它有没有进账本。全程用临时目录，绝不碰真实的 <root>/logs 和 <DSH_HOME>/blackhole。
  *
  * 跑法：node test/linkage-e2e.mjs
  */
@@ -15,7 +15,7 @@ import { appendEvent, EVENT_TYPE, eventsPath } from '../src/events.js';
 
 import { pathToFileURL } from 'node:url';
 
-const TONGWEN = pathToFileURL('<plugins>/dsh-tongwen/lib/organs.js').href;
+const TONGWEN = pathToFileURL('A:/dsh-plugins/dsh-tongwen/lib/organs.js').href;
 
 let passed = 0;
 function ok(name) {
@@ -33,7 +33,7 @@ fs.mkdirSync(ledgerRoot, { recursive: true });
 
 console.log('黑洞 × 书同文 · 合体端到端');
 
-// 1) 名片：跟真实 A:\dsh-plugins\dsh-blackhole\organ.json 同形状，events.path 指向临时 stateRoot
+// 1) 名片：跟真实 <plugin>/organ.json 同形状，events.path 指向临时 stateRoot
 {
   const card = {
     id: 'blackhole-e2e',

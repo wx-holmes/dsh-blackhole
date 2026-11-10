@@ -43,9 +43,9 @@ function byName(tools) {
 {
   const root = tmpRoot('names');
   const tools = makeBlockTools({ blocksRoot: path.join(root, 'blocks') });
-  assert.deepEqual(tools.map((t) => t.name), ['bh_compress', 'bh_restore', 'bh_search', 'bh_status']);
+  assert.deepEqual(tools.map((t) => t.name), ['bh_compress', 'bh_restore', 'bh_search', 'bh_restore_span', 'bh_status']);
   const bare = makeBlockTools({ blocksRoot: path.join(root, 'blocks'), toolPrefix: '' });
-  assert.deepEqual(bare.map((t) => t.name), ['compress', 'restore', 'search', 'status']);
+  assert.deepEqual(bare.map((t) => t.name), ['compress', 'restore', 'search', 'restore_span', 'status']);
   for (const tool of tools) {
     assert.equal(typeof tool.description, 'string');
     assert.equal(tool.parameters.type, 'object');
@@ -143,7 +143,7 @@ function byName(tools) {
   const registered = [];
   const scope = { tools: { register: (spec) => registered.push(spec.name) } };
   const names = registerBlockTools(scope, config);
-  assert.deepEqual(names, ['bh_compress', 'bh_restore', 'bh_search', 'bh_status']);
+  assert.deepEqual(names, ['bh_compress', 'bh_restore', 'bh_search', 'bh_restore_span', 'bh_status']);
   assert.deepEqual(registered, names);
 
   const warnings = [];
@@ -163,9 +163,9 @@ function byName(tools) {
     },
   };
   const partial = registerBlockTools(flaky, config, logger);
-  assert.deepEqual(partial, ['bh_compress', 'bh_search', 'bh_status'], '单个注册失败只跳过它');
+  assert.deepEqual(partial, ['bh_compress', 'bh_search', 'bh_restore_span', 'bh_status'], '单个注册失败只跳过它');
   assert.ok(warnings.some((m) => m.includes('boom')));
-  ok('注册：正常 4 个；无 tools / 无块仓返回空并记日志；单个失败不影响其余');
+  ok('注册：正常 5 个；无 tools / 无块仓返回空并记日志；单个失败不影响其余');
 
   // 带 effect 的 scope（生产环境是 cordis inject 作用域）：注册要包进 effect，卸载时能注销。
   const effects = [];
@@ -176,9 +176,9 @@ function byName(tools) {
     tools: { register: () => () => {} },
   };
   const viaEffect = registerBlockTools(withEffect, config, logger);
-  assert.deepEqual(viaEffect, ['bh_compress', 'bh_restore', 'bh_search', 'bh_status']);
-  assert.equal(effects.length, 4, '每个工具各走一次 effect');
-  ok('scope 带 effect 时，四个注册都包在 effect 里（卸载可注销）');
+  assert.deepEqual(viaEffect, ['bh_compress', 'bh_restore', 'bh_search', 'bh_restore_span', 'bh_status']);
+  assert.equal(effects.length, 5, '每个工具各走一次 effect');
+  ok('scope 带 effect 时，五个注册都包在 effect 里（卸载可注销）');
 }
 
 // 6. bh_status 带压缩台账（顶上 bili 的 acp_status 那个位置）
@@ -206,3 +206,5 @@ function byName(tools) {
 }
 
 console.log(`\n通过 ${passed} 项`);
+
+

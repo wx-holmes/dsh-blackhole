@@ -31,7 +31,7 @@ function makeEvents() {
           role: 'assistant',
           content: [
             { type: 'text', text: '收到，这条要逐字保留。' },
-            { type: 'tool-call', name: 'read', arguments: { path: 'D:\\example\\x.md' } },
+            { type: 'tool-call', name: 'read', arguments: { path: '/tmp/x.md' } },
           ],
         },
       },

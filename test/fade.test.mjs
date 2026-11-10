@@ -13,6 +13,7 @@ import path from 'node:path';
 import { fadeContent, fadeRange, resolveFadeConfig, FADE_MARKER, codePointLength } from '../src/fade.js';
 
 process.env.BLACKHOLE_TRACE = path.join(os.tmpdir(), `bh-fade-${process.pid}.log`);
+process.env.BLACKHOLE_SAMPLE = path.join(os.tmpdir(), `bh-sample-${path.basename(process.argv[1] ?? 'test')}-${process.pid}.jsonl`);
 
 let passed = 0;
 const ok = (name) => {

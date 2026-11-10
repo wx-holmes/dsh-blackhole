@@ -18,6 +18,7 @@ import { appendEvent, eventsPath, localIso, readEvents, EVENT_SOURCE, EVENT_TYPE
 
 // 单测别往生产 trace.log 里写：trace 路径走环境变量。
 process.env.BLACKHOLE_TRACE = path.join(os.tmpdir(), `bh-trace-${path.basename(process.argv[1] ?? 'test')}-${process.pid}.log`);
+process.env.BLACKHOLE_SAMPLE = path.join(os.tmpdir(), `bh-sample-${path.basename(process.argv[1] ?? 'test')}-${process.pid}.jsonl`);
 
 let passed = 0;
 function ok(name) {
@@ -94,12 +95,14 @@ console.log('器官事件 · 单测');
   const events = readEvents(paths.stateRoot);
   const [skipped, archived, failed] = events;
   for (const event of events) {
-    for (const field of ['ts', 'id', 'source', 'type', 'severity', 'subject', 'payload', 'trace']) {
+    for (const field of ['ts', 'tsMs', 'id', 'source', 'type', 'severity', 'subject', 'payload', 'trace']) {
       assert.ok(field in event, `缺字段 ${field}`);
     }
     assert.equal(event.source, EVENT_SOURCE);
     assert.ok('owner' in event.payload, 'payload 里必须有 owner（合体接入清单 §五②）');
     assert.match(event.ts, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/);
+    // 账本按数值筛日期（ledger.mjs: Number.isFinite(e.ts)），只有 ISO 会被整批丢掉。
+    assert.ok(Number.isFinite(event.tsMs) && event.tsMs > 1_700_000_000_000, 'tsMs 必须是 epoch 毫秒');
   }
   assert.equal(skipped.payload.owner, null, '没配 owner 时写 null，不留空串');
   assert.equal(skipped.severity, 'info');

@@ -23,6 +23,8 @@ export const EVENT_TYPE = Object.freeze({
   ARCHIVED: 'compact.archived',
   SKIPPED: 'compact.skipped',
   FAILED: 'archive.failed',
+  // 召回事件（2026-11-08 加，书同文评测用）：谁在什么时候从冷库取回了哪段、多大、digest 多少。
+  RECALL_HIT: 'recall.hit',
 });
 
 /** <stateRoot>/events.jsonl（与 organ.json 的 events.path 对齐）。 */
@@ -62,7 +64,11 @@ export function appendEvent(
     const file = eventsPath(stateRoot);
     fs.mkdirSync(path.dirname(file), { recursive: true });
     const event = {
+      // ts 按契约是本地时间带偏移（人读、机读都行）；tsMs 是同刻的 epoch 毫秒，
+      // 给「按数值比较日期」的消费者用——账本 ledger.mjs 就是 Number.isFinite(e.ts) 过滤的，
+      // 只有 ISO 字符串时会被整批丢掉（2026-11-07 实测：147 条 archived 被算成 0）。
       ts: localIso(now),
+      tsMs: now.getTime(),
       id: makeId(now),
       source: EVENT_SOURCE,
       type: String(type),
@@ -97,3 +103,4 @@ export function readEvents(stateRoot) {
     return [];
   }
 }
+
